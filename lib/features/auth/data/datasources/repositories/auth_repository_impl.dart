@@ -1,21 +1,23 @@
 import 'package:blog_app/core/theme/error/exceptions.dart';
 import 'package:blog_app/core/theme/error/failures.dart';
 import 'package:blog_app/features/auth/data/datasources/auth_remote_data_sources.dart';
+import 'package:blog_app/features/auth/data/models/user_model.dart';
 import 'package:blog_app/features/auth/domain/entities/user.dart';
 import 'package:blog_app/features/auth/domain/repository/auth_repository.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
+
   const AuthRepositoryImpl(this.remoteDataSource);
+
   @override
   Future<Either<Failure, User>> signInWithEmailPassword({
     required String email,
     required String password,
   }) async {
     return _getUser(
-      () async => await remoteDataSource.loginWithEmailPassword(
+      () => remoteDataSource.loginWithEmailPassword(
         email: email,
         password: password,
       ),
@@ -29,7 +31,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     return _getUser(
-      () async => await remoteDataSource.signUpWithEmailPassword(
+      () => remoteDataSource.signUpWithEmailPassword(
         name: name,
         email: email,
         password: password,
@@ -37,12 +39,12 @@ class AuthRepositoryImpl implements AuthRepository {
     );
   }
 
-  Future<Either<Failure, User>> _getUser(Future<User> Function() fn) async {
+  Future<Either<Failure, User>> _getUser(
+    Future<UserModel> Function() fn,
+  ) async {
     try {
-      final user = await fn();
-      return right(user);
-    } on sb.AuthException catch (e) {
-      return left(Failure(e.message));
+      final userModel = await fn();
+      return right(userModel); // auto upcast to User
     } on ServerException catch (e) {
       return left(Failure(e.message));
     }
