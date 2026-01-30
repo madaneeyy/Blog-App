@@ -1,23 +1,35 @@
 import 'package:blog_app/core/theme/error/exceptions.dart';
 import 'package:blog_app/core/theme/error/failures.dart';
 import 'package:blog_app/features/auth/data/datasources/auth_remote_data_sources.dart';
-import 'package:blog_app/features/auth/data/models/user_model.dart';
 import 'package:blog_app/features/auth/domain/entities/user.dart';
 import 'package:blog_app/features/auth/domain/repository/auth_repository.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 class AuthRepositoryImpl implements AuthRepository {
+  @override
+  Future<Either<Failure, User>> getCurrentUserData() async {
+    try {
+      final user = await remoteDataSource.getCurrentUserData();
+      if (user == null) {
+        return left(Failure("No user logged in"));
+      }
+      return right(user);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+    ;
+  }
+
   final AuthRemoteDataSource remoteDataSource;
-
   const AuthRepositoryImpl(this.remoteDataSource);
-
   @override
   Future<Either<Failure, User>> signInWithEmailPassword({
     required String email,
     required String password,
   }) async {
     return _getUser(
-      () => remoteDataSource.loginWithEmailPassword(
+      () async => await remoteDataSource.loginWithEmailPassword(
         email: email,
         password: password,
       ),
@@ -31,7 +43,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     return _getUser(
-      () => remoteDataSource.signUpWithEmailPassword(
+      () async => await remoteDataSource.signUpWithEmailPassword(
         name: name,
         email: email,
         password: password,
@@ -39,12 +51,12 @@ class AuthRepositoryImpl implements AuthRepository {
     );
   }
 
-  Future<Either<Failure, User>> _getUser(
-    Future<UserModel> Function() fn,
-  ) async {
+  Future<Either<Failure, User>> _getUser(Future<User> Function() fn) async {
     try {
-      final userModel = await fn();
-      return right(userModel); // auto upcast to User
+      final user = await fn();
+      return right(user);
+    } on sb.AuthException catch (e) {
+      return left(Failure(e.message));
     } on ServerException catch (e) {
       return left(Failure(e.message));
     }
